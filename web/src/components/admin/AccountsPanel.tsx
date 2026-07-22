@@ -10,7 +10,6 @@ export default function AccountsPanel() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [label, setLabel] = useState('');
   const [color, setColor] = useState(ACCOUNT_COLORS[0]);
-  const [maxAgents, setMaxAgents] = useState(2);
   const [qrModal, setQrModal] = useState<{ accountId: number; qr: string | null; status: string } | null>(null);
   const [error, setError] = useState('');
 
@@ -27,6 +26,7 @@ export default function AccountsPanel() {
     load().catch(console.error);
   }, [load]);
 
+  // Realtime Socket listeners for QR & Account Status updates
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -51,11 +51,29 @@ export default function AccountsPanel() {
     };
   }, []);
 
+  // Polling fallback while QR Modal is active without QR image
+  useEffect(() => {
+    if (!qrModal || qrModal.qr) return;
+    const interval = setInterval(() => {
+      api.get<{ status: string; qr: string | null }>(`/api/accounts/${qrModal.accountId}/qr`)
+        .then((res) => {
+          if (res.data.qr) {
+            setQrModal((prev) => (prev ? { ...prev, qr: res.data.qr, status: res.data.status } : null));
+          } else if (res.data.status === 'connected') {
+            setQrModal(null);
+            load().catch(() => undefined);
+          }
+        })
+        .catch(() => undefined);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [qrModal, load]);
+
   const createAccount = async () => {
     setError('');
     if (!label.trim()) return;
     try {
-      await api.post('/api/accounts', { label: label.trim(), color, max_agents: maxAgents });
+      await api.post('/api/accounts', { label: label.trim(), color, max_agents: 99 });
       setLabel('');
       await load();
     } catch (err) {
@@ -75,14 +93,14 @@ export default function AccountsPanel() {
     }
   };
 
-  const logoutAccount = async (accountId: number) => {
-    if (!window.confirm('Log out this WhatsApp? You will need to re-scan the QR to reconnect.')) return;
+  const unlinkAccount = async (accountId: number) => {
+    if (!window.confirm('Unlink this WhatsApp session? Your stored chat history and message logs will remain completely persistent.')) return;
     await api.post(`/api/accounts/${accountId}/logout`).catch(() => undefined);
     await load();
   };
 
   const removeAccount = async (accountId: number) => {
-    if (!window.confirm('Delete this account AND its stored chat history? This cannot be undone.')) return;
+    if (!window.confirm('Delete this account from your active dashboard list? Stored chat history will remain safe.')) return;
     await api.del(`/api/accounts/${accountId}`).catch(() => undefined);
     await load();
   };
@@ -95,11 +113,11 @@ export default function AccountsPanel() {
       await api.put(`/api/accounts/${account.id}/agents`, { user_ids: next });
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update agents');
+      setError(err instanceof Error ? err.message : 'Failed to update assigned agents');
     }
   };
 
-  const executives = users.filter((u) => u.role === 'executive' && u.is_active);
+  const activeSystemUsers = users.filter((u) => u.is_active);
   const qrAccount = qrModal ? accounts.find((a) => a.id === qrModal.accountId) : null;
 
   return (
@@ -120,12 +138,6 @@ export default function AccountsPanel() {
               />
             ))}
           </div>
-          <select value={maxAgents} onChange={(e) => setMaxAgents(Number(e.target.value))}>
-            <option value={1}>1 agent max</option>
-            <option value={2}>2 agents max</option>
-            <option value={3}>3 agents max</option>
-            <option value={5}>5 agents max</option>
-          </select>
           <button className="btn-primary" onClick={createAccount} disabled={!label.trim()}>
             Add account
           </button>
@@ -143,52 +155,54 @@ export default function AccountsPanel() {
             <span className={`conn conn-${a.status}`}>{a.status}</span>
             <div className="account-card-actions">
               {a.status === 'connected' ? (
-                <button className="btn-ghost" onClick={() => logoutAccount(a.id)}>
-                  Log out
+                <button className="btn-ghost" onClick={() => unlinkAccount(a.id)} title="Unlink WhatsApp session (keeps chat history)">
+                  Unlink WhatsApp
                 </button>
               ) : (
-                <button className="btn-primary" onClick={() => connect(a.id)}>
-                  {a.status === 'qr' || a.status === 'connecting' ? 'Show QR' : 'Connect / Scan QR'}
-                </button>
+                <>
+                  <button className="btn-primary" onClick={() => connect(a.id)}>
+                    {a.status === 'qr' || a.status === 'connecting' ? 'Show QR' : 'Connect / Scan QR'}
+                  </button>
+                  {a.status === 'logged_out' && (
+                    <button className="btn-ghost" onClick={() => unlinkAccount(a.id)}>
+                      Unlink
+                    </button>
+                  )}
+                </>
               )}
-              <button className="btn-danger" onClick={() => removeAccount(a.id)}>
+              <button className="btn-danger" onClick={() => removeAccount(a.id)} title="Delete account entry">
                 Delete
               </button>
             </div>
           </div>
+
           <div className="agents-block">
             <div className="agents-block-title">
-              Agents who can see &amp; reply on this WhatsApp
-              <span className={`agents-count ${a.agents.length >= a.max_agents ? 'full' : ''}`}>
-                {a.agents.length}/{a.max_agents}
+              Assigned System Users &amp; Agents
+              <span className="agents-count">
+                {a.agents.length} assigned
               </span>
             </div>
-            {executives.length === 0 ? (
-              <span className="muted">No executives yet — add them in Team &amp; Access first.</span>
+            {activeSystemUsers.length === 0 ? (
+              <span className="muted">No system users yet — add them in Team &amp; Access.</span>
             ) : (
               <div className="agents-checklist">
-                {executives.map((u) => {
+                {activeSystemUsers.map((u) => {
                   const assigned = a.agents.some((ag) => ag.id === u.id);
-                  const limitReached = !assigned && a.agents.length >= a.max_agents;
                   return (
-                    <label key={u.id} className={`agent-check ${limitReached ? 'disabled' : ''}`}>
+                    <label key={u.id} className="agent-check">
                       <input
                         type="checkbox"
                         checked={assigned}
-                        disabled={limitReached}
                         onChange={() => void toggleAgent(a, u.id)}
                       />
                       <span className="agent-check-name">{u.name}</span>
                       <span className="muted">@{u.username}</span>
+                      <span className={`role-chip role-${u.role}`}>{u.role}</span>
                     </label>
                   );
                 })}
               </div>
-            )}
-            {a.agents.length >= a.max_agents && executives.length > a.agents.length && (
-              <span className="muted">
-                Agent limit reached — raise "max agents" on this account to add more.
-              </span>
             )}
           </div>
         </div>
@@ -212,6 +226,9 @@ export default function AccountsPanel() {
               <div className="qr-waiting">
                 <div className="spinner" />
                 <p>{qrModal.status === 'connecting' ? 'Generating QR code…' : `Status: ${qrModal.status}`}</p>
+                <button className="btn-ghost" style={{ marginTop: 8 }} onClick={() => connect(qrModal.accountId)}>
+                  Force Refresh QR
+                </button>
               </div>
             )}
             <button className="btn-ghost" onClick={() => setQrModal(null)}>
