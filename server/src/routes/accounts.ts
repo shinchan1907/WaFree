@@ -53,13 +53,12 @@ export function accountsRouter(manager: WaManager): Router {
     const id = Number(req.params.accountId);
     await manager.stop(id).catch(() => undefined);
     db.prepare(`DELETE FROM wa_accounts WHERE id = ?`).run(id);
-    db.prepare(`DELETE FROM chats WHERE account_id = ?`).run(id);
-    db.prepare(`DELETE FROM messages WHERE account_id = ?`).run(id);
-    db.prepare(`DELETE FROM contacts WHERE account_id = ?`).run(id);
+    db.prepare(`DELETE FROM assignments WHERE account_id = ?`).run(id);
+    // Keep chats, messages, contacts persistent for historical audit trail!
     res.json({ success: true, data: null });
   });
 
-  /** Start session / show QR (admin only — the QR grants full account access). */
+  /** Start session / show QR (admin only — force fresh session if needed). */
   router.post('/:accountId/connect', requireAdmin, async (req, res) => {
     const id = Number(req.params.accountId);
     const exists = db.prepare(`SELECT id FROM wa_accounts WHERE id = ?`).get(id);
@@ -67,7 +66,7 @@ export function accountsRouter(manager: WaManager): Router {
       res.status(404).json({ success: false, error: 'Account not found' });
       return;
     }
-    await manager.start(id);
+    await manager.start(id, true);
     res.json({ success: true, data: { status: manager.getStatus(id), qr: manager.getQr(id) } });
   });
 
@@ -76,7 +75,7 @@ export function accountsRouter(manager: WaManager): Router {
     res.json({ success: true, data: null });
   });
 
-  /** Replace the set of assigned agents (respects max_agents). */
+  /** Replace the set of assigned agents (assign any system users). */
   router.put('/:accountId/agents', requireAdmin, (req, res) => {
     const id = Number(req.params.accountId);
     const { user_ids } = req.body ?? {};
@@ -84,18 +83,9 @@ export function accountsRouter(manager: WaManager): Router {
       res.status(400).json({ success: false, error: 'user_ids must be an array of user ids' });
       return;
     }
-    const account = db.prepare(`SELECT max_agents FROM wa_accounts WHERE id = ?`).get(id) as
-      | { max_agents: number }
-      | undefined;
+    const account = db.prepare(`SELECT id FROM wa_accounts WHERE id = ?`).get(id);
     if (!account) {
       res.status(404).json({ success: false, error: 'Account not found' });
-      return;
-    }
-    if (user_ids.length > account.max_agents) {
-      res.status(400).json({
-        success: false,
-        error: `This account allows at most ${account.max_agents} agent(s)`
-      });
       return;
     }
     const replace = db.transaction((ids: number[]) => {

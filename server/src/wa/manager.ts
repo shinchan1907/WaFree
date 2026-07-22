@@ -93,9 +93,22 @@ export class WaManager {
     }
   }
 
-  async start(accountId: number): Promise<void> {
+  async start(accountId: number, force: boolean = false): Promise<void> {
     const existing = this.sessions.get(accountId);
-    if (existing && existing.status !== 'disconnected' && existing.status !== 'logged_out') return;
+    if (existing) {
+      if (!force) {
+        if (existing.status === 'connected') return;
+        if (existing.status === 'qr' && existing.qrDataUrl) return;
+      }
+      // Clean up stale socket session before starting fresh
+      existing.stopping = true;
+      try {
+        existing.sock?.end(undefined);
+      } catch {
+        // ignore close error
+      }
+      this.sessions.delete(accountId);
+    }
 
     const session: Session = { accountId, sock: null, status: 'connecting', qrDataUrl: null, stopping: false };
     this.sessions.set(accountId, session);
@@ -127,8 +140,9 @@ export class WaManager {
         session.qrDataUrl = await QRCode.toDataURL(qr, { margin: 1, width: 300 });
         session.status = 'qr';
         setAccountStatus(accountId, 'qr');
-        // QR grants full account takeover — admins only.
+        // QR grants full account takeover — emit to admins and account room.
         this.io.to('admins').emit('account:qr', { accountId, qr: session.qrDataUrl });
+        this.emitAccount(accountId, 'account:qr', { accountId, qr: session.qrDataUrl });
         this.emitAccount(accountId, 'account:status', { accountId, status: 'qr' });
       }
 
