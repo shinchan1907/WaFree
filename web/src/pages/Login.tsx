@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../AuthContext';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function Login() {
   const { login } = useAuth();
@@ -24,6 +25,9 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-band" />
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 20 }}>
+        <ThemeToggle />
+      </div>
       <form className="login-card" onSubmit={onSubmit}>
         <div className="login-logo">
           <svg viewBox="0 0 24 24" width="42" height="42" fill="#00a884">

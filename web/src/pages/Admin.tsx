@@ -7,6 +7,7 @@ import AutomationPanel from '../components/admin/AutomationPanel';
 import BotsPanel from '../components/admin/BotsPanel';
 import TagsPanel from '../components/admin/TagsPanel';
 import SettingsPanel from '../components/admin/SettingsPanel';
+import ThemeToggle from '../components/ThemeToggle';
 
 type AdminTab = 'accounts' | 'users' | 'quickreplies' | 'automation' | 'bots' | 'tags' | 'settings';
 
