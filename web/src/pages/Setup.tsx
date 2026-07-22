@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, setToken } from '../api';
 import type { User } from '../types';
+import ThemeToggle from '../components/ThemeToggle';
 
 interface Props {
   onComplete: (user: User) => void;
@@ -53,6 +54,9 @@ export default function Setup({ onComplete }: Props) {
   return (
     <div className="login-page">
       <div className="login-band" />
+      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 20 }}>
+        <ThemeToggle />
+      </div>
       <div className="login-card setup-card">
         <div className="setup-steps">
           <span className={`setup-step ${step >= 1 ? 'active' : ''}`}>1. Admin account</span>

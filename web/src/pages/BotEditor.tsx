@@ -91,6 +91,7 @@ const nodeTypes = {
 };
 
 export default function BotEditor() {
+  const { theme } = useTheme();
   const { botId } = useParams();
   const [bot, setBot] = useState<Bot | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
@@ -216,6 +217,7 @@ export default function BotEditor() {
         <span className="muted">{bot.account_id ? 'Single account' : 'All WhatsApps'}</span>
         <div className="bot-editor-actions">
           {message && <span className="muted">{message}</span>}
+          <ThemeToggle />
           <button className={`toggle ${bot.enabled ? 'on' : ''}`} onClick={() => void toggleEnabled()} title="Enable bot">
             <span />
           </button>
@@ -251,7 +253,7 @@ export default function BotEditor() {
             onNodeClick={(_e, n) => setSelectedId(n.id)}
             onPaneClick={() => setSelectedId(null)}
             fitView
-            colorMode="dark"
+            colorMode={theme}
             deleteKeyCode={['Delete', 'Backspace']}
           >
             <Background gap={22} />
