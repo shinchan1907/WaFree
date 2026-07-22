@@ -18,6 +18,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import { api } from '../api';
 import type { Bot, Tag } from '../types';
+import { useTheme } from '../ThemeContext';
+import ThemeToggle from '../components/ThemeToggle';
 
 type NodeKind = 'trigger' | 'condition' | 'reply' | 'ai' | 'delay' | 'tag' | 'status';
 
