@@ -7,6 +7,7 @@ import type { Account, Chat, ChatStatus, QuickReply, Tag } from '../types';
 import { initials } from '../lib/format';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
+import ThemeToggle from '../components/ThemeToggle';
 
 export type TabFilter = 'all' | ChatStatus;
 
@@ -132,6 +133,7 @@ export default function ChatApp() {
           {accounts.length === 0 && <div className="rail-empty">—</div>}
         </div>
         <div className="rail-bottom">
+          <ThemeToggle />
           {user?.role === 'admin' && (
             <Link to="/admin" className="rail-icon" title="Admin panel">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
