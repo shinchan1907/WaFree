@@ -52,6 +52,7 @@ export interface Message {
   text: string | null;
   timestamp: number;
   sent_by_user_id?: number | null;
+  status?: 'sent' | 'delivered' | 'read';
 }
 
 export interface QuickReply {

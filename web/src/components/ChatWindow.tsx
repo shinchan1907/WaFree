@@ -16,6 +16,19 @@ function dayKey(ts: number): string {
   return new Date(ts * 1000).toDateString();
 }
 
+/** Detects GIF or Image URLs in text to render inline media previews. */
+function parseMediaText(text: string | null): { imageUrl: string | null; caption: string } {
+  if (!text) return { imageUrl: null, caption: '' };
+  const urlRegex = /(https?:\/\/[^\s]+(?:\.(?:png|jpg|jpeg|gif|webp)|giphy\.com\/media\/[^\s]+|giphy\.com\/[^\s]+|tenor\.com\/[^\s]+|imgur\.com\/[^\s]+))/i;
+  const match = text.match(urlRegex);
+  if (match) {
+    const imageUrl = match[0];
+    const caption = text.replace(imageUrl, '').trim();
+    return { imageUrl, caption };
+  }
+  return { imageUrl: null, caption: text };
+}
+
 export default function ChatWindow({ account, chat, tags, quickReplies }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -54,9 +67,17 @@ export default function ChatWindow({ account, chat, tags, quickReplies }: Props)
         prev.some((m) => m.msg_id === payload.message.msg_id) ? prev : [...prev, payload.message]
       );
     };
+    const onStatusUpdate = (payload: { accountId: number; chatJid: string; msgId: string; status: 'sent' | 'delivered' | 'read' }) => {
+      if (payload.accountId !== account.id || payload.chatJid !== chat.jid) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.msg_id === payload.msgId ? { ...m, status: payload.status } : m))
+      );
+    };
     socket.on('message:new', onMessage);
+    socket.on('message:status', onStatusUpdate);
     return () => {
       socket.off('message:new', onMessage);
+      socket.off('message:status', onStatusUpdate);
     };
   }, [account.id, chat.jid]);
 
@@ -219,6 +240,8 @@ export default function ChatWindow({ account, chat, tags, quickReplies }: Props)
           const day = dayKey(m.timestamp);
           const showDay = day !== lastDay;
           lastDay = day;
+          const { imageUrl, caption } = parseMediaText(m.text);
+
           return (
             <Fragment key={m.msg_id}>
               {showDay && (
@@ -234,8 +257,40 @@ export default function ChatWindow({ account, chat, tags, quickReplies }: Props)
                     </div>
                   )}
                   {m.type !== 'text' && <div className="bubble-type">{m.type.toUpperCase()}</div>}
-                  <span className="bubble-text">{m.text ?? ''}</span>
-                  <span className="bubble-time">{formatTime(m.timestamp)}</span>
+
+                  {imageUrl && (
+                    <div style={{ marginBottom: 6, borderRadius: 8, overflow: 'hidden', maxWidth: 300 }}>
+                      <img src={imageUrl} alt="Media" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block' }} loading="lazy" />
+                    </div>
+                  )}
+
+                  {caption ? <span className="bubble-text">{caption}</span> : !imageUrl && <span className="bubble-text">{m.text ?? ''}</span>}
+
+                  <span className="bubble-time">
+                    {formatTime(m.timestamp)}
+                    {fromMe && (
+                      <span style={{ marginLeft: 4, display: 'inline-flex', verticalAlign: 'middle' }}>
+                        {m.status === 'read' ? (
+                          /* Double blue tick */
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="18 6 7 17 2 12" />
+                            <polyline points="22 6 11 17 9 15" />
+                          </svg>
+                        ) : m.status === 'delivered' ? (
+                          /* Double gray tick */
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="18 6 7 17 2 12" />
+                            <polyline points="22 6 11 17 9 15" />
+                          </svg>
+                        ) : (
+                          /* Single tick */
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </span>
+                    )}
+                  </span>
                 </div>
               </div>
             </Fragment>
