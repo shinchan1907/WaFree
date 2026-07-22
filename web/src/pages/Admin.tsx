@@ -33,7 +33,10 @@ export default function Admin() {
           </svg>
           Back to chats
         </Link>
-        <h1>Admin Panel</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1>Admin Panel</h1>
+          <ThemeToggle />
+        </div>
         <nav className="admin-tabs">
           {TABS.map((t) => (
             <button
