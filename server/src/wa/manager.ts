@@ -126,23 +126,18 @@ export class WaManager {
     const { version } = await Promise.race([
       fetchLatestBaileysVersion(),
       new Promise<{ version: [number, number, number] }>((resolve) =>
-        setTimeout(() => resolve({ version: [2, 3000, 1017531287] as [number, number, number] }), 2500)
+        setTimeout(() => resolve({ version: [2, 3000, 1035194821] as [number, number, number] }), 2500)
       )
-    ]).catch(() => ({ version: [2, 3000, 1017531287] as [number, number, number] }));
+    ]).catch(() => ({ version: [2, 3000, 1035194821] as [number, number, number] }));
 
     const { state, saveCreds } = await useMultiFileAuthState(dir);
-
-    // If credentials exist on disk but are not registered/paired, clear them so QR is emitted
-    if (force || !state.creds?.registered) {
-      // If creds are not registered, make sure session auth files are fresh
-    }
 
     const sock = makeWASocket({
       version,
       auth: state,
       logger,
-      // Present as a desktop app so WhatsApp uploads full chat history on pairing.
-      browser: Browsers.macOS('Desktop'),
+      // Use Ubuntu Chrome browser profile to prevent 428 disconnection errors
+      browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: false,
       syncFullHistory: true,
       generateHighQualityLinkPreview: false
@@ -174,14 +169,14 @@ export class WaManager {
 
       if (connection === 'close') {
         const code = (lastDisconnect?.error as Boom | undefined)?.output?.statusCode;
-        const loggedOut = code === DisconnectReason.loggedOut;
+        const loggedOut = code === DisconnectReason.loggedOut || code === 401 || code === 428;
         session.qrDataUrl = null;
         if (session.stopping) {
           this.setStatus(accountId, 'disconnected');
           return;
         }
         if (loggedOut) {
-          console.log(`[wa:${accountId}] logged out — clearing credentials`);
+          console.log(`[wa:${accountId}] session ended (code ${code}) — clearing credentials`);
           this.clearCredentials(accountId);
           this.setStatus(accountId, 'logged_out');
           void sendWebhook('account.logged_out', {
