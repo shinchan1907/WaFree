@@ -20,10 +20,11 @@ server/                     Node 22, TypeScript (ESM, run with tsx — no build 
   src/ai.ts                 OpenAI-compatible chat completions client
 web/                        React 18 + Vite + TypeScript, pure CSR
   src/pages/                Login, Setup (first-run wizard), ChatApp, Admin, BotEditor
-  src/components/           ChatList, ChatWindow, Composer, admin/* panels
+  src/components/           ChatList, ChatWindow, Composer, ThemeToggle, admin/* panels
+  src/ThemeContext.tsx      Light & Dark mode state management (Light theme default)
   src/api.ts                fetch wrapper (JWT header, ApiResponse envelope)
   src/socket.ts             Socket.IO client singleton
-  src/styles.css            Single stylesheet, WhatsApp-Web dark theme via CSS variables
+  src/styles.css            Complete stylesheet with Light theme default & [data-theme="dark"]
 Dockerfile / docker-compose.yml   Single-image deploy; volume at /data
 ```
 
@@ -36,7 +37,7 @@ Dockerfile / docker-compose.yml   Single-image deploy; volume at /data
 5. **Automation order** — incoming customer message → bots first (`runBots`), then auto-reply rules (`runAutoReplies`), first match wins. Automated sends use user id `0`. Never trigger automation on `fromMe` or historical messages (loops!).
 6. **Secrets** — `ai_api_key` / `webhook_secret` are masked as `••••••••` by `getAllSettingsMasked`; the PUT handler skips masked values. Keep that behaviour.
 7. **Realtime contract** — socket events: `message:new`, `chat:updated`, `account:status`, `account:qr` (admins only — QR = full account takeover). If you add events, update both `manager.ts`/`sockets.ts` and the frontend listeners.
-8. **Frontend style** — no UI framework; use existing CSS variables and classes in `styles.css`. Components stay under ~300 lines; extract when bigger.
+8. **Frontend style & theme** — use CSS variables defined in `styles.css`. The app defaults to **Light Mode**, with dynamic dark theme switching via `[data-theme="dark"]`. Theme state is managed by `ThemeContext.tsx`.
 9. **ESM everywhere** — server imports use `.js` extensions (`import x from './y.js'`). tsx runs TypeScript directly; there is no build output for the server.
 
 ## Commands
@@ -56,15 +57,8 @@ docker compose up -d --build
 
 ## Testing checklist for changes
 
-- `npm run typecheck` (server) and `npm run build` (web) pass.
+- `npm run typecheck` (server) and `npm run build` (web) pass with 0 errors.
+- Verify Light Mode aesthetics and Dark Mode toggle functionality.
 - Login as admin AND as an executive — verify executives cannot see unassigned accounts (API returns 403, UI hides them).
 - If you touched `wa/` or `automation/`: link a test number, send yourself a message, verify chat list updates in realtime and automation does not reply to `fromMe` messages.
 - If you touched Docker: `docker compose up -d --build` from a clean checkout, complete the setup wizard, restart the container, confirm data survives.
-
-## Domain gotchas
-
-- **JIDs**: individuals end `@s.whatsapp.net`, groups `@g.us`, LinkedIn-style LIDs `@lid`. `status@broadcast` and newsletters are filtered out by `isTrackableJid`.
-- **Timestamps** are unix **seconds** everywhere in DB and API; frontend multiplies by 1000.
-- **Reconnects**: Baileys closes connections often; `manager` auto-reconnects unless `DisconnectReason.loggedOut`, which wipes credentials and requires a new QR.
-- **QR flow**: `POST /api/accounts/:id/connect` → socket `account:qr` (data-URL PNG) to admins; QR rotates ~every 20s until scanned.
-- **Chat status semantics**: incoming message on a `resolved` chat reopens it to `pending`; an agent reply moves `pending → ongoing`.

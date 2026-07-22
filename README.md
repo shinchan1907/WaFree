@@ -1,116 +1,190 @@
-# WaFree — Multi-WhatsApp Team Dashboard
+<div align="center">
 
-**Self-hosted, multi-number WhatsApp inbox for teams.** Link any number of WhatsApp / WhatsApp Business phones by QR, give your executives their own logins, and manage every conversation from one WhatsApp-Web-style dashboard — with statuses, tags, quick replies, scheduling, auto-replies, AI and a visual bot builder.
+# ⚡ WaFree — Self-Hosted Multi-WhatsApp Team Dashboard & Automation Engine
 
-> Think "WABA-style team inbox", but self-hosted and free — powered by [Baileys](https://github.com/WhiskeySockets/Baileys) (the open-source WhatsApp Web protocol library).
+<p align="center">
+  <b>The open-source, self-hosted WhatsApp Web team inbox for multi-number customer support, AI auto-replies, and visual bot automation.</b>
+</p>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-22+-339933.svg)](https://nodejs.org/)
+[![Powered by Baileys](https://img.shields.io/badge/Powered%20by-Baileys-059669.svg)](https://github.com/WhiskeySockets/Baileys)
+
+[Features](#-key-features) • [Quick Start](#-instant-quick-start-docker) • [Light & Dark UI](#-modern-light--dark-theme-ui) • [Architecture](#-architecture) • [API Reference](#-api--socket-reference) • [Security](#-security--production-checklist)
 
 ---
 
-## ✨ Features
+</div>
 
-| Area | What you get |
+## 🌟 Why WaFree?
+
+Traditional WhatsApp Business API (WABA) solutions cost hundreds of dollars per month per agent and charge per conversation. **WaFree** gives your team a high-speed, self-hosted team inbox powered by open-source WhatsApp Web automation ([Baileys](https://github.com/WhiskeySockets/Baileys)).
+
+- 🚀 **Zero Monthly Subscriptions** — Self-host on a $5/mo VPS or Docker container.
+- 📱 **Multi-Number Architecture** — Connect unlimited WhatsApp / WhatsApp Business phones via QR code.
+- 🎨 **Modern Light & Dark Theme UI** — Ultra-sleek, responsive SaaS design with instant theme toggling.
+- 🤖 **Visual Bot Builder** — Drag-and-drop n8n-style canvas (Trigger → Condition → AI Reply → Tag → Delay → Status).
+- 🧠 **Bring Your Own AI** — Native OpenAI, Anthropic, Groq, DeepSeek, Ollama, and OpenRouter integration.
+- 🔒 **Role-Based Access Control** — Admins have total control; Executives only see their assigned accounts.
+
+---
+
+## ✨ Key Features
+
+| Area | Features & Capability |
 |---|---|
-| **Multi-account** | Link unlimited WhatsApp numbers via QR (Linked Devices). Each account gets a label + color identifier everywhere in the UI. |
-| **Team & roles** | **Admin** (full control) and **Executive** (agent) roles. Assign 1, 2 or more agents per WhatsApp account — executives only ever see their assigned numbers. |
-| **Familiar UI** | WhatsApp Web-style dark interface: chat list, unread badges, bubbles, day separators, group sender names, full stored chat history with pagination. |
-| **Workflow states** | Every chat is **Pending / On-going / Resolved**, with filter tabs and per-chat agent assignment. Incoming messages automatically re-open resolved chats. |
-| **Tags** | Color-coded labels ("Lead", "VIP", "Complaint"…) on any conversation. |
-| **Quick replies** | Type `/` in the composer to insert canned responses (global or per-account). |
-| **Message scheduling** | Schedule any message from the clock icon; the server delivers it even if the agent is offline. Admin overview with cancel. |
-| **Auto-replies** | Keyword or catch-all rules, per-account or global, fixed text **or AI-generated**, with per-contact cooldowns. |
-| **Bot builder** | n8n-style drag-and-drop flow canvas: Trigger → Condition → Reply / AI Reply / Delay / Add Tag / Set Status. |
-| **AI integration** | Bring any OpenAI-compatible API (OpenAI, Anthropic, Groq, OpenRouter, DeepSeek, Ollama, LM Studio…) with your own system prompt. |
-| **Notifications** | Webhook alerts (Slack / n8n / Discord / custom) when an account logs out, connects, or a scheduled message fails. |
-| **Onboarding** | First run shows a guided setup wizard — create the admin account and webhook in 30 seconds. No config files needed. |
+| **Multi-Account Inbox** | Link unlimited WhatsApp numbers simultaneously via QR scan. Color-coded account identifiers everywhere in the unified sidebar. |
+| **Team & Granular Access** | Role breakdown: **Admin** (full system governance) and **Executive** (support agent). Assign specific agents to specific numbers. |
+| **Sleek Light & Dark UI** | Clean light mode default with modern emerald accents (`#059669`), crisp typography (`Inter`), chat bubbles, day markers, and quick theme toggle. |
+| **Workflow State Machine** | Conversations flow smoothly through **Pending ➔ On-going ➔ Resolved**. Incoming customer messages auto-reopen pending tickets. |
+| **Visual Bot Builder** | Interactive canvas built with React Flow: set keyword/any triggers, regex filters, dynamic delays, tag modifications, and LLM responses. |
+| **Smart AI Automation** | Connect OpenAI / DeepSeek / Ollama / Groq with customized system prompts, context awareness, and per-contact cooldown safety limits. |
+| **Quick Replies (`/`)** | Type `/` in the message composer to instantly insert canned text responses (global or account-scoped). |
+| **Native Message Scheduler** | Schedule future messages with background tick delivery even if agents are offline. Admin control with live status and cancellation. |
+| **Instant Webhooks** | Outbound real-time notifications to Slack, n8n, Discord, or custom REST endpoints on logout, connection change, or delivery failure. |
+| **Zero-Config Onboarding** | Guided 30-second setup wizard on initial launch to create the super-admin account and notification webhooks. |
 
-## 🚀 Quick start (Docker)
+---
+
+## ⚡ Instant Quick Start (Docker)
+
+Deploy the complete stack (Express API + Baileys Engine + React Web SPA + SQLite WAL) in under 60 seconds:
 
 ```bash
-git clone <your-repo-url> wafree && cd wafree
+# 1. Clone repository
+git clone https://github.com/shinchan1907/WaFree.git wafree
+cd wafree
 
-# optional but recommended for production:
-cp .env.example .env        # then set JWT_SECRET (openssl rand -hex 32)
+# 2. Setup environment secret (recommended)
+cp .env.example .env
 
+# 3. Launch single-container stack
 docker compose up -d
 ```
 
-Open **http://your-server:4000** → the setup wizard appears → create your admin → done.
+Open **`http://your-server-ip:4000`** → setup wizard launches → create admin credentials → start connecting WhatsApp numbers!
 
-All state (database + WhatsApp sessions) lives in the `wafree_data` Docker volume, so `docker compose down && up` keeps everything.
+> 💾 **Data Persistence**: All session data, SQLite databases, and media live securely inside the `wafree_data` volume across container updates.
 
-### Updating
+---
+
+## 🎨 Modern Light & Dark Theme UI
+
+WaFree comes out of the box with an enterprise-grade design system:
+- ☀️ **Light Theme (Default)**: Crisp slate backgrounds, clean card elevation, readable typography, and emerald brand accents.
+- 🌙 **Dark Theme**: Deep dark palette designed for low-light support environments.
+- 🌓 **Instant Toggle**: Click the theme toggle button in the bottom rail or header navigation to switch instantly.
+
+---
+
+## 🔧 Local Development Setup
+
+### Prerequisites
+- **Node.js**: 22+
+- **npm**: 10+
+
+### Steps
 
 ```bash
-git pull
-docker compose up -d --build
+# Terminal 1 — Backend Express Server (Port 4000)
+cd server
+npm install
+npm run dev
+
+# Terminal 2 — Frontend React App (Port 5173 with Vite hot reload)
+cd web
+npm install
+npm run dev
 ```
 
-## 🔧 Local development (no Docker)
+The Vite dev server automatically proxies `/api` and `/socket.io` to port `4000`.
 
-Requirements: Node.js 22+
-
-```bash
-# Terminal 1 — API + WhatsApp engine (http://localhost:4000)
-cd server && npm install && npm run dev
-
-# Terminal 2 — React frontend with hot reload (http://localhost:5173)
-cd web && npm install && npm run dev
-```
-
-The Vite dev server proxies `/api` and `/socket.io` to port 4000. In production the Node server serves the built frontend itself (single origin, no CORS pain).
-
-## 📖 Using WaFree
-
-1. **Link a WhatsApp** — Admin → WhatsApp Accounts → *Add account* → *Connect / Scan QR* → on the phone: WhatsApp → Linked devices → Link a device.
-2. **Add your team** — Admin → Team & Access → add executives, then click agent pills on each account card to assign them (respects the per-account agent limit).
-3. **Work the inbox** — agents log in, see only their assigned numbers on the left rail, reply, set Pending/On-going/Resolved, tag conversations, `/`-insert quick replies, schedule messages with the clock icon.
-4. **Automate** — Admin → Automation for auto-reply rules, Admin → Bot Builder for visual flows, Admin → Settings for AI + webhooks.
-
-### Webhook payloads
-
-`POST` JSON to your configured URL, with optional `X-WaFree-Secret` header:
-
-```json
-{
-  "event": "account.logged_out",
-  "timestamp": "2026-07-22T10:15:00.000Z",
-  "account": { "id": 1, "label": "Sales", "phone": "919000000000" },
-  "message": "WhatsApp session was logged out. Re-scan the QR code to reconnect."
-}
-```
-
-Events: `account.connected` · `account.logged_out` · `scheduled.failed` · `test`
+---
 
 ## 🏗 Architecture
 
 ```
-┌───────────────┐   REST + Socket.IO   ┌──────────────────────────────┐
-│  React (CSR)  │ ◄──────────────────► │  Node.js / Express            │
-│  Vite build,  │                      │  ├─ Auth (JWT, bcrypt, roles) │
-│  served as    │                      │  ├─ Baileys session manager   │
-│  static files │                      │  │   (one socket per number)  │
-└───────────────┘                      │  ├─ Automation engine         │
-                                       │  │   (rules → bots → AI)      │
-                                       │  ├─ Scheduler (20s tick)      │
-                                       │  └─ SQLite (better-sqlite3)   │
-                                       └──────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      WaFree System Architecture                         │
+└─────────────────────────────────────────────────────────────────────────┘
+                                   │
+              ┌────────────────────┴────────────────────┐
+              ▼                                         ▼
+   ┌───────────────────────┐               ┌───────────────────────────┐
+   │ React 18 SPA (Web)    │               │ Node.js 22 Express Engine │
+   │ ├─ Light & Dark Theme │ ◄── REST ──►  │ ├─ Auth & Role Guard      │
+   │ ├─ Socket.IO Client   │ ◄── WS ────►  │ ├─ Baileys Session Pool  │
+   │ └─ React Flow Canvas  │               │ ├─ Automation Engine      │
+   └───────────────────────┘               │ ├─ Scheduler & Webhooks   │
+                                           │ └─ SQLite + WAL           │
+                                           └─────────────┬─────────────┘
+                                                         │
+                                                         ▼
+                                           ┌───────────────────────────┐
+                                           │ WhatsApp Web Protocol     │
+                                           │ (Multi-Device Linked Sockets)│
+                                           └───────────────────────────┘
 ```
 
-- **Fully client-side rendered** frontend — the server only ships static files and JSON.
-- **SQLite + WAL** — zero-maintenance persistence; messages, chats, users, rules and flows in one file.
-- **Session state** — Baileys multi-file auth per account under `DATA_DIR/sessions/<id>`; restored automatically on boot.
+- **Persistence Layer**: Single-file SQLite database with Write-Ahead Logging (`better-sqlite3`).
+- **Session Manager**: Isolated Baileys authentication credentials under `DATA_DIR/sessions/<account_id>`.
+- **Realtime Pipeline**: Socket.IO broadcasts message updates, QR code rotation, and connection status changes to authenticated UI clients.
 
-## ⚠️ Important disclaimer
+---
 
-WaFree uses the **unofficial** WhatsApp Web protocol via Baileys. This is not endorsed by WhatsApp/Meta and violates their Terms of Service; numbers can be **banned**, especially for bulk or unsolicited messaging. Use it for legitimate 1-to-1 customer conversations, at your own risk. For mission-critical messaging, use the official WhatsApp Business API.
+## 🔌 API & Socket Reference
 
-## 🔒 Security notes
+### Core REST Endpoints
 
-- Set a strong `JWT_SECRET` in production (`openssl rand -hex 32`).
-- Run behind HTTPS (Caddy/Traefik/nginx reverse proxy) before exposing publicly.
-- QR codes grant **full account access** — they are shown to admins only.
-- API keys and webhook secrets are stored server-side and masked in the UI.
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/setup/status` | Public | Check if setup wizard is completed |
+| `POST` | `/api/setup` | Public | Complete setup & create super-admin |
+| `POST` | `/api/auth/login` | Public | Authenticate user & receive JWT token |
+| `GET` | `/api/accounts` | Authenticated | List accessible WhatsApp accounts |
+| `POST` | `/api/accounts/:id/connect` | Admin | Request QR code connection socket |
+| `GET` | `/api/accounts/:id/chats` | Account Access | Retrieve chat list for account |
+| `POST` | `/api/accounts/:id/messages` | Account Access | Send outbound message |
+| `POST` | `/api/accounts/:id/messages/schedule` | Account Access | Schedule delayed message send |
+| `GET` | `/api/automation/bots` | Admin | List bot flow configurations |
+| `PATCH` | `/api/automation/bots/:id` | Admin | Update bot flow React Flow nodes |
 
-## License
+---
 
-MIT
+## 🔒 Security & Production Checklist
+
+1. **JWT Secret**: Always generate a cryptographically strong `JWT_SECRET` in `.env`:
+   ```bash
+   openssl rand -hex 32
+   ```
+2. **Reverse Proxy & TLS**: Always place WaFree behind a TLS reverse proxy (Caddy, Nginx, or Cloudflare) with HTTPS enabled.
+3. **QR Protection**: QR code socket events grant full account access and are restricted exclusively to Admin roles.
+4. **API Key Encryption**: AI API keys and Webhook Secrets are masked in UI and REST responses.
+
+---
+
+## 🤝 Contributing
+
+We welcome community contributions! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) guide before submitting Pull Requests.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Ensure type safety passes (`cd server && npm run typecheck`, `cd web && npm run build`)
+4. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+5. Push to the Branch (`git push origin feature/AmazingFeature`)
+6. Open a Pull Request
+
+---
+
+## 📜 License
+
+Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
+
+---
+
+<p align="center">
+  <b>Built with ❤️ by the open-source community. If you find WaFree useful, please give it a ⭐ star!</b>
+</p>
