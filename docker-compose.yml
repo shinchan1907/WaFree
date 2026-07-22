@@ -1,0 +1,16 @@
+services:
+  wafree:
+    build: .
+    container_name: wafree
+    restart: unless-stopped
+    ports:
+      - "${WAFREE_PORT:-4000}:4000"
+    environment:
+      # Set a long random string in .env for production — keeps logins valid across restarts.
+      - JWT_SECRET=${JWT_SECRET:-}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-12h}
+    volumes:
+      - wafree_data:/data
+
+volumes:
+  wafree_data:

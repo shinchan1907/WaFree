@@ -1,0 +1,15 @@
+pls make sure it docker based and goes up just by hitting docker compose up -d
+
+no complex setup needed.
+
+
+
+once deployed on server, it should give a proper on-voarding flow on  ui, admin user details setup, and noitifications setup (webhook endpoint for notifications like account logged out or any issue).
+
+
+
+nd also pmake proper agent.md, readme.md, like a very professional whatsapp tool, message scheduling, automated reply setup, bot builder like n8n flow builder kind of builder.
+
+ai api integraiton for  autoeply setup or bot setup etc.
+
+tags  etc.
