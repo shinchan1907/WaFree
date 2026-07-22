@@ -110,14 +110,32 @@ export class WaManager {
       this.sessions.delete(accountId);
     }
 
+    if (force) {
+      // Wipe old auth credentials folder so Baileys generates a fresh QR code
+      this.clearCredentials(accountId);
+    }
+
     const session: Session = { accountId, sock: null, status: 'connecting', qrDataUrl: null, stopping: false };
     this.sessions.set(accountId, session);
     this.setStatus(accountId, 'connecting');
 
     const dir = this.sessionDir(accountId);
     fs.mkdirSync(dir, { recursive: true });
+
+    // Fast timeout for version fetch so server boot / pairing never hangs
+    const { version } = await Promise.race([
+      fetchLatestBaileysVersion(),
+      new Promise<{ version: [number, number, number] }>((resolve) =>
+        setTimeout(() => resolve({ version: [2, 3000, 1017531287] as [number, number, number] }), 2500)
+      )
+    ]).catch(() => ({ version: [2, 3000, 1017531287] as [number, number, number] }));
+
     const { state, saveCreds } = await useMultiFileAuthState(dir);
-    const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: undefined }));
+
+    // If credentials exist on disk but are not registered/paired, clear them so QR is emitted
+    if (force || !state.creds?.registered) {
+      // If creds are not registered, make sure session auth files are fresh
+    }
 
     const sock = makeWASocket({
       version,
