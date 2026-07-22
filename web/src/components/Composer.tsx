@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { QuickReply } from '../types';
+import EmojiPicker from './EmojiPicker';
+import GifPicker from './GifPicker';
 
 interface Props {
   onSend: (text: string) => Promise<void>;
@@ -22,6 +24,8 @@ export default function Composer({ onSend, onSchedule, quickReplies, disabled, d
   const [sending, setSending] = useState(false);
   const [pickerIndex, setPickerIndex] = useState(0);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
   const [scheduleAt, setScheduleAt] = useState(defaultScheduleValue);
   const [scheduleNote, setScheduleNote] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -40,6 +44,24 @@ export default function Composer({ onSend, onSchedule, quickReplies, disabled, d
     inputRef.current?.focus();
   };
 
+  const insertEmoji = (emoji: string) => {
+    setText((prev) => prev + emoji);
+    setEmojiOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const insertGif = async (url: string) => {
+    setGifOpen(false);
+    if (!disabled && !sending) {
+      setSending(true);
+      try {
+        await onSend(url);
+      } finally {
+        setSending(false);
+      }
+    }
+  };
+
   const doSend = async () => {
     const trimmed = text.trim();
     if (!trimmed || sending || disabled) return;
@@ -47,6 +69,9 @@ export default function Composer({ onSend, onSchedule, quickReplies, disabled, d
     try {
       await onSend(trimmed);
       setText('');
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto';
+      }
     } catch {
       // error surfaced by parent; keep text for retry
     } finally {
@@ -100,6 +125,10 @@ export default function Composer({ onSend, onSchedule, quickReplies, disabled, d
           ))}
         </div>
       )}
+
+      {emojiOpen && <EmojiPicker onSelect={insertEmoji} onClose={() => setEmojiOpen(false)} />}
+      {gifOpen && <GifPicker onSelectGif={insertGif} onClose={() => setGifOpen(false)} />}
+
       {scheduleOpen && (
         <div className="schedule-pop">
           <div className="palette-title">Schedule this message</div>
@@ -139,18 +168,50 @@ export default function Composer({ onSend, onSchedule, quickReplies, disabled, d
         </div>
       )}
       <div className="composer-row">
+        <button
+          className="send-btn"
+          title="Insert Emoji"
+          disabled={disabled}
+          onClick={() => {
+            setEmojiOpen((o) => !o);
+            setGifOpen(false);
+            setScheduleOpen(false);
+          }}
+        >
+          😊
+        </button>
+
+        <button
+          className="send-btn"
+          title="Insert GIF / Reaction"
+          disabled={disabled}
+          style={{ fontSize: 13, fontWeight: 700 }}
+          onClick={() => {
+            setGifOpen((o) => !o);
+            setEmojiOpen(false);
+            setScheduleOpen(false);
+          }}
+        >
+          GIF
+        </button>
+
         {onSchedule && (
           <button
             className="send-btn"
             title="Schedule message"
             disabled={disabled || !text.trim()}
-            onClick={() => setScheduleOpen((o) => !o)}
+            onClick={() => {
+              setScheduleOpen((o) => !o);
+              setEmojiOpen(false);
+              setGifOpen(false);
+            }}
           >
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
               <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.2 3.1.8-1.2-4.5-2.7z" />
             </svg>
           </button>
         )}
+
         <textarea
           ref={inputRef}
           rows={1}
@@ -160,6 +221,8 @@ export default function Composer({ onSend, onSchedule, quickReplies, disabled, d
           onChange={(e) => {
             setText(e.target.value);
             setPickerIndex(0);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
           }}
           onKeyDown={onKeyDown}
         />
