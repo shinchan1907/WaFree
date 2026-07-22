@@ -156,23 +156,40 @@ export default function AccountsPanel() {
               </button>
             </div>
           </div>
-          <div className="agents-row">
-            <span className="muted">
-              Agents ({a.agents.length}/{a.max_agents}):
-            </span>
-            {executives.length === 0 && <span className="muted">No executives yet — add them in Team & Access.</span>}
-            {executives.map((u) => {
-              const assigned = a.agents.some((ag) => ag.id === u.id);
-              return (
-                <button
-                  key={u.id}
-                  className={`agent-pill ${assigned ? 'active' : ''}`}
-                  onClick={() => toggleAgent(a, u.id)}
-                >
-                  {u.name}
-                </button>
-              );
-            })}
+          <div className="agents-block">
+            <div className="agents-block-title">
+              Agents who can see &amp; reply on this WhatsApp
+              <span className={`agents-count ${a.agents.length >= a.max_agents ? 'full' : ''}`}>
+                {a.agents.length}/{a.max_agents}
+              </span>
+            </div>
+            {executives.length === 0 ? (
+              <span className="muted">No executives yet — add them in Team &amp; Access first.</span>
+            ) : (
+              <div className="agents-checklist">
+                {executives.map((u) => {
+                  const assigned = a.agents.some((ag) => ag.id === u.id);
+                  const limitReached = !assigned && a.agents.length >= a.max_agents;
+                  return (
+                    <label key={u.id} className={`agent-check ${limitReached ? 'disabled' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={assigned}
+                        disabled={limitReached}
+                        onChange={() => void toggleAgent(a, u.id)}
+                      />
+                      <span className="agent-check-name">{u.name}</span>
+                      <span className="muted">@{u.username}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            {a.agents.length >= a.max_agents && executives.length > a.agents.length && (
+              <span className="muted">
+                Agent limit reached — raise "max agents" on this account to add more.
+              </span>
+            )}
           </div>
         </div>
       ))}

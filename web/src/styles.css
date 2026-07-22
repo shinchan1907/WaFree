@@ -419,15 +419,28 @@ input:focus, select:focus, textarea:focus { border-color: var(--teal); }
 .account-card-head { display: flex; align-items: center; gap: 12px; }
 .account-card-title { display: flex; flex-direction: column; }
 .account-card-actions { margin-left: auto; display: flex; gap: 8px; }
-.agents-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
-.agent-pill {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 4px 13px;
-  font-size: 13px;
-  color: var(--text-secondary);
+.agents-block { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.agents-block-title { font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+.agents-count {
+  background: rgba(0, 168, 132, 0.18); color: #06cf9c;
+  font-size: 11px; font-weight: 700;
+  border-radius: 10px; padding: 1px 8px;
 }
-.agent-pill.active { background: rgba(0, 168, 132, 0.18); border-color: var(--teal); color: #06cf9c; }
+.agents-count.full { background: rgba(245, 182, 66, 0.16); color: var(--amber); }
+.agents-checklist { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.agent-check {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 13.5px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.agent-check:hover { background: var(--bg-hover); }
+.agent-check input { accent-color: var(--teal); width: 15px; height: 15px; cursor: pointer; }
+.agent-check.disabled { opacity: 0.45; cursor: not-allowed; }
+.agent-check.disabled input { cursor: not-allowed; }
+.agent-check-name { font-weight: 500; }
 
 .data-table { width: 100%; border-collapse: collapse; }
 .data-table th {

@@ -111,6 +111,79 @@ export function upsertHistoryChat(
   });
 }
 
+/**
+ * WhatsApp addresses some chats by privacy alias (@lid) and others by phone
+ * number (@s.whatsapp.net) — sometimes BOTH for the same person (history vs
+ * live messages). We keep a lid→pn map and merge split conversations.
+ */
+export function canonicalJid(accountId: number, jid: string): string {
+  if (!jid.endsWith('@lid')) return jid;
+  const row = db.prepare(`SELECT pn FROM lid_map WHERE account_id = ? AND lid = ?`).get(accountId, jid) as
+    | { pn: string }
+    | undefined;
+  return row?.pn ?? jid;
+}
+
+export function storeLidMapping(accountId: number, lid: string, pn: string): void {
+  const existing = db.prepare(`SELECT pn FROM lid_map WHERE account_id = ? AND lid = ?`).get(accountId, lid) as
+    | { pn: string }
+    | undefined;
+  if (existing?.pn === pn) return;
+  db.prepare(
+    `INSERT INTO lid_map (account_id, lid, pn) VALUES (?, ?, ?)
+     ON CONFLICT (account_id, lid) DO UPDATE SET pn = excluded.pn`
+  ).run(accountId, lid, pn);
+  mergeLidChat(accountId, lid, pn);
+}
+
+/** Folds an @lid conversation into its phone-number twin once the mapping is known. */
+function mergeLidChat(accountId: number, lid: string, pn: string): void {
+  const lidChat = db.prepare(`SELECT * FROM chats WHERE account_id = ? AND jid = ?`).get(accountId, lid) as
+    | ChatRow
+    | undefined;
+  if (!lidChat) return;
+
+  const merge = db.transaction(() => {
+    db.prepare(`UPDATE OR IGNORE messages SET chat_jid = ? WHERE account_id = ? AND chat_jid = ?`).run(
+      pn,
+      accountId,
+      lid
+    );
+    db.prepare(`DELETE FROM messages WHERE account_id = ? AND chat_jid = ?`).run(accountId, lid);
+    db.prepare(`UPDATE OR IGNORE chat_tags SET jid = ? WHERE account_id = ? AND jid = ?`).run(pn, accountId, lid);
+    db.prepare(`DELETE FROM chat_tags WHERE account_id = ? AND jid = ?`).run(accountId, lid);
+    db.prepare(
+      `UPDATE scheduled_messages SET chat_jid = ? WHERE account_id = ? AND chat_jid = ? AND status = 'pending'`
+    ).run(pn, accountId, lid);
+
+    const pnChat = db.prepare(`SELECT * FROM chats WHERE account_id = ? AND jid = ?`).get(accountId, pn) as
+      | ChatRow
+      | undefined;
+    if (!pnChat) {
+      db.prepare(`UPDATE chats SET jid = ? WHERE account_id = ? AND jid = ?`).run(pn, accountId, lid);
+      return;
+    }
+    const newer = (lidChat.last_message_at ?? 0) > (pnChat.last_message_at ?? 0) ? lidChat : pnChat;
+    db.prepare(
+      `UPDATE chats SET
+         name = COALESCE(?, name),
+         last_message_at = ?,
+         last_message_preview = ?,
+         unread_count = unread_count + ?
+       WHERE account_id = ? AND jid = ?`
+    ).run(
+      lidChat.name,
+      newer.last_message_at,
+      newer.last_message_preview,
+      lidChat.unread_count,
+      accountId,
+      pn
+    );
+    db.prepare(`DELETE FROM chats WHERE account_id = ? AND jid = ?`).run(accountId, lid);
+  });
+  merge();
+}
+
 export function upsertContact(accountId: number, jid: string, name: string | null): void {
   if (!name) return;
   db.prepare(

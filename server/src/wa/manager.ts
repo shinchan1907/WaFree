@@ -22,7 +22,9 @@ import {
   upsertHistoryChat,
   setChatName,
   getChat,
-  setAccountStatus
+  setAccountStatus,
+  canonicalJid,
+  storeLidMapping
 } from './store.js';
 import { sendWebhook } from '../notify.js';
 import { runBots } from '../automation/botEngine.js';
@@ -178,7 +180,7 @@ export class WaManager {
         if (!isTrackableJid(ch.id)) continue;
         upsertHistoryChat(
           accountId,
-          ch.id,
+          canonicalJid(accountId, ch.id),
           ch.name || null,
           Number(ch.conversationTimestamp) || null,
           Number(ch.unreadCount) || 0
@@ -214,8 +216,9 @@ export class WaManager {
     historical: boolean
   ): void {
     try {
-      const jid = m.key?.remoteJid;
-      if (!isTrackableJid(jid)) return;
+      const rawJid = m.key?.remoteJid;
+      if (!isTrackableJid(rawJid)) return;
+      const jid = canonicalJid(accountId, rawJid);
       const content = extractContent(m.message);
       if (!content || !m.key?.id) return;
 
@@ -293,9 +296,14 @@ export class WaManager {
     c: { id: string; lid?: string; name?: string | null; notify?: string | null; verifiedName?: string | null }
   ): void {
     const name = c.name || c.verifiedName || c.notify || null;
-    if (!name) return;
-    if (isTrackableJid(c.id)) upsertContact(accountId, c.id, name);
-    if (typeof c.lid === 'string' && isTrackableJid(c.lid)) upsertContact(accountId, c.lid, name);
+    if (name) {
+      if (isTrackableJid(c.id)) upsertContact(accountId, c.id, name);
+      if (typeof c.lid === 'string' && isTrackableJid(c.lid)) upsertContact(accountId, c.lid, name);
+    }
+    // Learn lid ↔ phone-number pairs so split conversations get merged.
+    if (typeof c.lid === 'string' && c.lid.endsWith('@lid') && c.id.endsWith('@s.whatsapp.net')) {
+      storeLidMapping(accountId, c.lid, c.id);
+    }
   }
 
   private groupNameFetched = new Set<string>();

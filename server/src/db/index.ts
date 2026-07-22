@@ -71,6 +71,13 @@ CREATE TABLE IF NOT EXISTS contacts (
   PRIMARY KEY (account_id, jid)
 );
 
+CREATE TABLE IF NOT EXISTS lid_map (
+  account_id INTEGER NOT NULL,
+  lid TEXT NOT NULL,
+  pn TEXT NOT NULL,
+  PRIMARY KEY (account_id, lid)
+);
+
 CREATE TABLE IF NOT EXISTS quick_replies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   account_id INTEGER,
