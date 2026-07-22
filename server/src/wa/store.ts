@@ -22,6 +22,7 @@ export interface StoredMessage {
   text: string | null;
   timestamp: number;
   sent_by_user_id?: number | null;
+  status?: string | null;
 }
 
 const upsertChatStmt = db.prepare(`
@@ -41,16 +42,24 @@ const upsertChatStmt = db.prepare(`
 
 const insertMessageStmt = db.prepare(`
   INSERT OR IGNORE INTO messages
-    (account_id, chat_jid, msg_id, from_me, sender_jid, sender_name, type, text, timestamp, sent_by_user_id)
+    (account_id, chat_jid, msg_id, from_me, sender_jid, sender_name, type, text, timestamp, sent_by_user_id, status)
   VALUES
-    (@account_id, @chat_jid, @msg_id, @from_me, @sender_jid, @sender_name, @type, @text, @timestamp, @sent_by_user_id)
+    (@account_id, @chat_jid, @msg_id, @from_me, @sender_jid, @sender_name, @type, @text, @timestamp, @sent_by_user_id, @status)
 `);
 
+export function updateMessageStatus(accountId: number, msgId: string, status: string): void {
+  db.prepare(`UPDATE messages SET status = ? WHERE account_id = ? AND msg_id = ?`).run(status, accountId, msgId);
+}
+
 export function saveIncoming(msg: StoredMessage, preview: string, chatName: string | null): boolean {
+  if (chatName) {
+    upsertContact(msg.account_id, msg.chat_jid, chatName);
+  }
   const inserted = insertMessageStmt.run({
     ...msg,
     from_me: msg.from_me ? 1 : 0,
-    sent_by_user_id: msg.sent_by_user_id ?? null
+    sent_by_user_id: msg.sent_by_user_id ?? null,
+    status: msg.status ?? 'sent'
   });
   if (inserted.changes === 0) return false;
   upsertChatStmt.run({
@@ -68,10 +77,14 @@ export function saveIncoming(msg: StoredMessage, preview: string, chatName: stri
 
 /** History-sync variant: never bumps unread or reopens resolved chats. */
 export function saveHistorical(msg: StoredMessage, preview: string, chatName: string | null): void {
+  if (chatName) {
+    upsertContact(msg.account_id, msg.chat_jid, chatName);
+  }
   const inserted = insertMessageStmt.run({
     ...msg,
     from_me: msg.from_me ? 1 : 0,
-    sent_by_user_id: null
+    sent_by_user_id: null,
+    status: msg.status ?? 'sent'
   });
   if (inserted.changes === 0) return;
   upsertChatStmt.run({

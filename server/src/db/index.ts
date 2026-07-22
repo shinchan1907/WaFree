@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS messages (
   text TEXT,
   timestamp INTEGER NOT NULL,
   sent_by_user_id INTEGER,
+  status TEXT NOT NULL DEFAULT 'sent',
   UNIQUE (account_id, chat_jid, msg_id)
 );
 CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages (account_id, chat_jid, timestamp);
@@ -151,3 +152,9 @@ CREATE TABLE IF NOT EXISTS bots (
 `;
 
 db.exec(SCHEMA);
+
+try {
+  db.exec(`ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'sent'`);
+} catch {
+  // Column already exists
+}
