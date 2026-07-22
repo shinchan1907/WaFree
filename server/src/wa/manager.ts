@@ -24,7 +24,8 @@ import {
   getChat,
   setAccountStatus,
   canonicalJid,
-  storeLidMapping
+  storeLidMapping,
+  updateMessageStatus
 } from './store.js';
 import { sendWebhook } from '../notify.js';
 import { runBots } from '../automation/botEngine.js';
@@ -226,6 +227,42 @@ export class WaManager {
 
     sock.ev.on('contacts.update', (contacts) => {
       for (const c of contacts) this.storeContact(accountId, c as (typeof contacts)[number] & { id: string });
+    });
+
+    sock.ev.on('messages.update', (updates) => {
+      for (const { key, update } of updates) {
+        if (!key.id || !key.remoteJid) continue;
+        const statusNum = Number((update as any)?.status);
+        let statusStr: string | null = null;
+        if (statusNum === 2) statusStr = 'sent';
+        else if (statusNum === 3) statusStr = 'delivered';
+        else if (statusNum === 4 || statusNum === 5) statusStr = 'read';
+        if (statusStr) {
+          const jid = canonicalJid(accountId, key.remoteJid);
+          updateMessageStatus(accountId, key.id, statusStr);
+          this.emitAccount(accountId, 'message:status', {
+            accountId,
+            chatJid: jid,
+            msgId: key.id,
+            status: statusStr
+          });
+        }
+      }
+    });
+
+    sock.ev.on('message-receipt.update', (receipts) => {
+      for (const { key, receipt } of receipts) {
+        if (!key.id || !key.remoteJid) continue;
+        const jid = canonicalJid(accountId, key.remoteJid);
+        const statusStr = receipt.readTimestamp ? 'read' : receipt.receiptTimestamp ? 'delivered' : 'sent';
+        updateMessageStatus(accountId, key.id, statusStr);
+        this.emitAccount(accountId, 'message:status', {
+          accountId,
+          chatJid: jid,
+          msgId: key.id,
+          status: statusStr
+        });
+      }
     });
 
     sock.ev.on('chats.upsert', (chats) => {

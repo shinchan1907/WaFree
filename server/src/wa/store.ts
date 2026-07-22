@@ -217,8 +217,9 @@ export function setChatName(accountId: number, jid: string, name: string): void 
 export function getChat(accountId: number, jid: string): (ChatRow & { tag_ids: number[] }) | undefined {
   const row = db
     .prepare(
-      `SELECT c.account_id, c.jid, COALESCE(c.name, ct.name) AS name, c.last_message_at,
-              c.last_message_preview, c.unread_count, c.status, c.assigned_user_id
+      `SELECT c.account_id, c.jid,
+              COALESCE(c.name, ct.name, (SELECT sender_name FROM messages WHERE account_id = c.account_id AND chat_jid = c.jid AND sender_name IS NOT NULL AND sender_name != '' ORDER BY timestamp DESC LIMIT 1)) AS name,
+              c.last_message_at, c.last_message_preview, c.unread_count, c.status, c.assigned_user_id
        FROM chats c
        LEFT JOIN contacts ct ON ct.account_id = c.account_id AND ct.jid = c.jid
        WHERE c.account_id = ? AND c.jid = ?`

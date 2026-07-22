@@ -15,8 +15,9 @@ export function chatsRouter(manager: WaManager): Router {
   router.get('/', (req, res) => {
     const accountId = Number((req.params as Record<string, string>).accountId);
     const { status, q } = req.query;
-    let sql = `SELECT c.account_id, c.jid, COALESCE(c.name, ct.name) AS name, c.last_message_at,
-                      c.last_message_preview, c.unread_count, c.status, c.assigned_user_id
+    let sql = `SELECT c.account_id, c.jid,
+                      COALESCE(c.name, ct.name, (SELECT sender_name FROM messages WHERE account_id = c.account_id AND chat_jid = c.jid AND sender_name IS NOT NULL AND sender_name != '' ORDER BY timestamp DESC LIMIT 1)) AS name,
+                      c.last_message_at, c.last_message_preview, c.unread_count, c.status, c.assigned_user_id
                FROM chats c
                LEFT JOIN contacts ct ON ct.account_id = c.account_id AND ct.jid = c.jid
                WHERE c.account_id = ?`;
@@ -45,7 +46,7 @@ export function chatsRouter(manager: WaManager): Router {
     const accountId = Number((req.params as Record<string, string>).accountId);
     const jid = String(req.params.jid);
     const before = Number(req.query.before) || 0;
-    let sql = `SELECT msg_id, from_me, sender_jid, sender_name, type, text, timestamp, sent_by_user_id
+    let sql = `SELECT msg_id, from_me, sender_jid, sender_name, type, text, timestamp, sent_by_user_id, status
                FROM messages WHERE account_id = ? AND chat_jid = ?`;
     const params: unknown[] = [accountId, jid];
     if (before > 0) {
