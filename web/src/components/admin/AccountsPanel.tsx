@@ -182,6 +182,20 @@ export default function AccountsPanel() {
               <span className="agents-count">
                 {a.agents.length} assigned
               </span>
+              <label
+                className="auto-assign-toggle"
+                title="New incoming chats are distributed to the assigned agent with the fewest open chats"
+              >
+                <input
+                  type="checkbox"
+                  checked={Boolean(a.auto_assign)}
+                  onChange={async (e) => {
+                    await api.patch(`/api/accounts/${a.id}`, { auto_assign: e.target.checked }).catch(() => undefined);
+                    await load();
+                  }}
+                />
+                Auto-distribute new chats
+              </label>
             </div>
             {activeSystemUsers.length === 0 ? (
               <span className="muted">No system users yet — add them in Team &amp; Access.</span>

@@ -30,6 +30,8 @@ import {
 import { sendWebhook } from '../notify.js';
 import { runBots } from '../automation/botEngine.js';
 import { runAutoReplies } from '../automation/autoReply.js';
+import { autoAssignChat } from '../automation/assignment.js';
+import { getSetting, DEFAULT_CSAT_MESSAGE } from '../settings.js';
 
 const logger = pino({ level: 'warn' });
 const RECONNECT_DELAY_MS = 5000;
@@ -345,6 +347,18 @@ export class WaManager {
           timestamp
         }
       });
+      if (!fromMe) {
+        // CSAT: a 1-5 reply after a resolution survey is a rating, not a new ticket.
+        if (stored.text && this.captureCsatRating(accountId, jid, stored.text)) {
+          this.emitAccount(accountId, 'chat:updated', { accountId, chat: getChat(accountId, jid) });
+          return;
+        }
+        // Auto-distribution: give unassigned chats to the least-loaded agent.
+        const assignedTo = autoAssignChat(accountId, jid);
+        if (assignedTo !== null) {
+          console.log(`[wa:${accountId}] auto-assigned ${jid} to user ${assignedTo}`);
+        }
+      }
       this.emitAccount(accountId, 'chat:updated', { accountId, chat: getChat(accountId, jid) });
 
       // Automation: bots first, then simple auto-replies (customer messages only).
@@ -354,6 +368,53 @@ export class WaManager {
     } catch (err) {
       console.error(`[wa:${accountId}] failed to handle message:`, err);
     }
+  }
+
+  private static readonly CSAT_WINDOW_SECONDS = 48 * 3600;
+
+  /** Returns true when the incoming text was consumed as a CSAT rating. */
+  private captureCsatRating(accountId: number, jid: string, text: string): boolean {
+    const match = text.trim().match(/^[1-5]$/);
+    if (!match) return false;
+    const chat = db
+      .prepare(`SELECT csat_asked_at, csat_agent_id FROM chats WHERE account_id = ? AND jid = ?`)
+      .get(accountId, jid) as { csat_asked_at: number | null; csat_agent_id: number | null } | undefined;
+    if (!chat?.csat_asked_at) return false;
+    const now = Math.floor(Date.now() / 1000);
+    if (now - chat.csat_asked_at > WaManager.CSAT_WINDOW_SECONDS) {
+      // Survey expired — treat as a normal message.
+      db.prepare(`UPDATE chats SET csat_asked_at = NULL, csat_agent_id = NULL WHERE account_id = ? AND jid = ?`).run(
+        accountId,
+        jid
+      );
+      return false;
+    }
+
+    db.prepare(
+      `INSERT INTO csat_ratings (account_id, chat_jid, rating, agent_id, rated_at) VALUES (?, ?, ?, ?, ?)`
+    ).run(accountId, jid, Number(match[0]), chat.csat_agent_id, now);
+    // The rating closes the loop — keep the ticket resolved and read.
+    db.prepare(
+      `UPDATE chats SET status = 'resolved', unread_count = 0, csat_asked_at = NULL, csat_agent_id = NULL
+       WHERE account_id = ? AND jid = ?`
+    ).run(accountId, jid);
+
+    void this.sendText(accountId, jid, 'Thank you for your feedback! 🙏', 0).catch(() => undefined);
+    return true;
+  }
+
+  /** Sends the CSAT survey after an agent resolves a chat (called from the routes layer). */
+  async sendCsatSurvey(accountId: number, jid: string, agentId: number): Promise<void> {
+    if (getSetting('csat_enabled') !== '1') return;
+    if (jid.endsWith('@g.us')) return; // surveys are for individual customers only
+    if (this.getStatus(accountId) !== 'connected') return;
+    const message = getSetting('csat_message') || DEFAULT_CSAT_MESSAGE;
+    await this.sendText(accountId, jid, message, 0);
+    // sendText flips pending→ongoing; surveying a resolved ticket must keep it resolved.
+    db.prepare(
+      `UPDATE chats SET status = 'resolved', csat_asked_at = ?, csat_agent_id = ? WHERE account_id = ? AND jid = ?`
+    ).run(Math.floor(Date.now() / 1000), agentId, accountId, jid);
+    this.broadcastChat(accountId, jid);
   }
 
   private runAutomation(accountId: number, jid: string, text: string): void {

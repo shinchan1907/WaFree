@@ -15,6 +15,7 @@ import { setupRouter } from './routes/setup.js';
 import { settingsRouter } from './routes/settings.js';
 import { tagsRouter } from './routes/tags.js';
 import { automationRouter } from './routes/automation.js';
+import { analyticsRouter } from './routes/analytics.js';
 import { WaManager } from './wa/manager.js';
 import { setupSockets } from './sockets.js';
 import { initAutomation } from './automation/index.js';
@@ -38,6 +39,7 @@ app.use('/api/quick-replies', quickRepliesRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/tags', tagsRouter);
 app.use('/api/automation', automationRouter);
+app.use('/api/analytics', analyticsRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ success: true, data: { status: 'ok' } });

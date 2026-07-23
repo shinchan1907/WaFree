@@ -7,7 +7,9 @@ export type SettingKey =
   | 'ai_base_url'
   | 'ai_api_key'
   | 'ai_model'
-  | 'ai_system_prompt';
+  | 'ai_system_prompt'
+  | 'csat_enabled'
+  | 'csat_message';
 
 export const SETTING_KEYS: SettingKey[] = [
   'webhook_url',
@@ -16,8 +18,13 @@ export const SETTING_KEYS: SettingKey[] = [
   'ai_base_url',
   'ai_api_key',
   'ai_model',
-  'ai_system_prompt'
+  'ai_system_prompt',
+  'csat_enabled',
+  'csat_message'
 ];
+
+export const DEFAULT_CSAT_MESSAGE =
+  'Thank you for contacting us! How would you rate our support today? Please reply with a number from 1 (poor) to 5 (excellent).';
 
 /** Keys whose values are masked when sent to the frontend. */
 export const SECRET_KEYS: SettingKey[] = ['webhook_secret', 'ai_api_key'];

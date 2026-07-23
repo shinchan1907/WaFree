@@ -2,6 +2,7 @@ import { db } from '../db/index.js';
 import { aiReply, isAiConfigured } from '../ai.js';
 import { matchesKeywords } from './autoReply.js';
 import { getManager, AUTOMATION_USER_ID } from './index.js';
+import { logStatusChange } from './assignment.js';
 
 /** Flow format produced by the visual builder (React Flow compatible). */
 export interface FlowNode {
@@ -100,6 +101,7 @@ async function executeNode(
       const status = String(node.data.status ?? '');
       if (['pending', 'ongoing', 'resolved'].includes(status)) {
         db.prepare(`UPDATE chats SET status = ? WHERE account_id = ? AND jid = ?`).run(status, accountId, jid);
+        logStatusChange(accountId, jid, status, AUTOMATION_USER_ID);
         manager.broadcastChat(accountId, jid);
       }
       return {};

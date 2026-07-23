@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { requireAuth, requireAccountAccess } from '../auth/middleware.js';
+import { logStatusChange } from '../automation/assignment.js';
 import type { WaManager } from '../wa/manager.js';
 import { getChat } from '../wa/store.js';
 
@@ -69,6 +70,13 @@ export function chatsRouter(manager: WaManager): Router {
     }
     try {
       const result = await manager.sendText(accountId, jid, text.trim(), req.user!.id);
+      // Ticket ownership: the first person to reply claims the chat.
+      const claimed = db
+        .prepare(
+          `UPDATE chats SET assigned_user_id = ? WHERE account_id = ? AND jid = ? AND assigned_user_id IS NULL`
+        )
+        .run(req.user!.id, accountId, jid);
+      if (claimed.changes > 0) manager.broadcastChat(accountId, jid);
       res.json({ success: true, data: result });
     } catch (err: any) {
       res.status(502).json({ success: false, error: err?.message || 'Failed to send message' });
@@ -91,6 +99,14 @@ export function chatsRouter(manager: WaManager): Router {
         return;
       }
       db.prepare(`UPDATE chats SET status = ? WHERE account_id = ? AND jid = ?`).run(status, accountId, jid);
+      if (status !== chat.status) {
+        logStatusChange(accountId, jid, status, req.user!.id);
+        // Resolving a ticket triggers the customer-satisfaction survey (if enabled).
+        if (status === 'resolved') {
+          const agentId = chat.assigned_user_id ?? req.user!.id;
+          void manager.sendCsatSurvey(accountId, jid, agentId).catch(() => undefined);
+        }
+      }
     }
     if (assigned_user_id !== undefined) {
       db.prepare(`UPDATE chats SET assigned_user_id = ? WHERE account_id = ? AND jid = ?`).run(

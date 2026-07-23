@@ -4,12 +4,13 @@ import AccountsPanel from '../components/admin/AccountsPanel';
 import UsersPanel from '../components/admin/UsersPanel';
 import QuickRepliesPanel from '../components/admin/QuickRepliesPanel';
 import AutomationPanel from '../components/admin/AutomationPanel';
+import ReportsPanel from '../components/admin/ReportsPanel';
 import BotsPanel from '../components/admin/BotsPanel';
 import TagsPanel from '../components/admin/TagsPanel';
 import SettingsPanel from '../components/admin/SettingsPanel';
 import ThemeToggle from '../components/ThemeToggle';
 
-type AdminTab = 'accounts' | 'users' | 'quickreplies' | 'automation' | 'bots' | 'tags' | 'settings';
+type AdminTab = 'accounts' | 'users' | 'quickreplies' | 'automation' | 'bots' | 'tags' | 'reports' | 'settings';
 
 const TABS: { key: AdminTab; label: string }[] = [
   { key: 'accounts', label: 'WhatsApp Accounts' },
@@ -18,6 +19,7 @@ const TABS: { key: AdminTab; label: string }[] = [
   { key: 'automation', label: 'Automation' },
   { key: 'bots', label: 'Bot Builder' },
   { key: 'tags', label: 'Tags' },
+  { key: 'reports', label: 'Reports' },
   { key: 'settings', label: 'Settings' }
 ];
 
@@ -56,6 +58,7 @@ export default function Admin() {
         {tab === 'automation' && <AutomationPanel />}
         {tab === 'bots' && <BotsPanel />}
         {tab === 'tags' && <TagsPanel />}
+        {tab === 'reports' && <ReportsPanel />}
         {tab === 'settings' && <SettingsPanel />}
       </main>
     </div>

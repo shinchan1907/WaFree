@@ -149,12 +149,41 @@ CREATE TABLE IF NOT EXISTS bots (
   flow TEXT NOT NULL DEFAULT '{"nodes":[],"edges":[]}',
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS csat_ratings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL,
+  chat_jid TEXT NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  agent_id INTEGER,
+  rated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_csat_agent ON csat_ratings (agent_id, rated_at);
+
+CREATE TABLE IF NOT EXISTS chat_status_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL,
+  chat_jid TEXT NOT NULL,
+  status TEXT NOT NULL,
+  user_id INTEGER,
+  at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_status_log ON chat_status_log (user_id, status, at);
 `;
 
 db.exec(SCHEMA);
 
-try {
-  db.exec(`ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'sent'`);
-} catch {
-  // Column already exists
+/** Additive migrations for databases created by older versions. */
+const MIGRATIONS = [
+  `ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'sent'`,
+  `ALTER TABLE wa_accounts ADD COLUMN auto_assign INTEGER NOT NULL DEFAULT 1`,
+  `ALTER TABLE chats ADD COLUMN csat_asked_at INTEGER`,
+  `ALTER TABLE chats ADD COLUMN csat_agent_id INTEGER`
+];
+for (const migration of MIGRATIONS) {
+  try {
+    db.exec(migration);
+  } catch {
+    // Column already exists
+  }
 }

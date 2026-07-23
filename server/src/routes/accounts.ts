@@ -10,7 +10,7 @@ export function accountsRouter(manager: WaManager): Router {
   /** List accounts visible to the current user, with assigned agents. */
   router.get('/', (req, res) => {
     const base = `
-      SELECT a.id, a.label, a.color, a.phone, a.status, a.max_agents, a.created_at,
+      SELECT a.id, a.label, a.color, a.phone, a.status, a.max_agents, a.auto_assign, a.created_at,
              (SELECT json_group_array(json_object('id', u.id, 'name', u.name, 'username', u.username))
               FROM assignments s JOIN users u ON u.id = s.user_id WHERE s.account_id = a.id) AS agents
       FROM wa_accounts a`;
@@ -42,10 +42,13 @@ export function accountsRouter(manager: WaManager): Router {
 
   router.patch('/:accountId', requireAdmin, (req, res) => {
     const id = Number(req.params.accountId);
-    const { label, color, max_agents } = req.body ?? {};
+    const { label, color, max_agents, auto_assign } = req.body ?? {};
     if (label) db.prepare(`UPDATE wa_accounts SET label = ? WHERE id = ?`).run(String(label).trim(), id);
     if (color) db.prepare(`UPDATE wa_accounts SET color = ? WHERE id = ?`).run(String(color), id);
     if (max_agents) db.prepare(`UPDATE wa_accounts SET max_agents = ? WHERE id = ?`).run(Number(max_agents), id);
+    if (auto_assign !== undefined) {
+      db.prepare(`UPDATE wa_accounts SET auto_assign = ? WHERE id = ?`).run(auto_assign ? 1 : 0, id);
+    }
     res.json({ success: true, data: null });
   });
 

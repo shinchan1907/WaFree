@@ -124,6 +124,33 @@ export default function SettingsPanel() {
         </div>
       </div>
 
+      <div className="card">
+        <h3>⭐ CSAT survey</h3>
+        <p className="muted">
+          When an agent marks a chat <b>Resolved</b>, WaFree sends this survey to the customer. A reply of 1–5
+          within 48 hours is recorded as their satisfaction rating (visible in Reports) — without reopening the
+          ticket.
+        </p>
+        <div className="settings-grid">
+          <label className="settings-field">
+            <span>Enabled</span>
+            <select value={settings.csat_enabled ?? ''} onChange={(e) => set('csat_enabled', e.target.value)}>
+              <option value="">Disabled</option>
+              <option value="1">Enabled</option>
+            </select>
+          </label>
+          <label className="settings-field wide">
+            <span>Survey message</span>
+            <textarea
+              rows={3}
+              placeholder="Thank you for contacting us! How would you rate our support today? Reply with 1 (poor) to 5 (excellent)."
+              value={settings.csat_message ?? ''}
+              onChange={(e) => set('csat_message', e.target.value)}
+            />
+          </label>
+        </div>
+      </div>
+
       <div className="form-row">
         <button className="btn-primary" onClick={() => void save()} disabled={busy}>
           {busy ? 'Saving…' : 'Save settings'}

@@ -26,6 +26,7 @@ export interface Account {
   phone: string | null;
   status: AccountStatus;
   max_agents: number;
+  auto_assign?: number;
   agents: Agent[];
 }
 
