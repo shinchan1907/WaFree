@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import type { Account, Chat, Tag } from '../types';
 import type { TabFilter } from '../pages/ChatApp';
-import { avatarColor, chatDisplayName, formatChatListDate, initials } from '../lib/format';
+import { chatDisplayName, formatChatListDate } from '../lib/format';
+import Avatar from './Avatar';
 
 const TABS: { key: TabFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -101,9 +102,7 @@ export default function ChatList({ chats, loading, account, activeJid, tags, onO
               className={`chat-item ${c.jid === activeJid ? 'active' : ''}`}
               onClick={() => onOpenChat(c.jid)}
             >
-              <div className="avatar" style={{ background: avatarColor(c.jid) }}>
-                {initials(name)}
-              </div>
+              <Avatar accountId={c.account_id} jid={c.jid} name={name} size={44} />
               <div className="chat-item-body">
                 <div className="chat-item-top">
                   <span className="chat-item-name">{name}</span>

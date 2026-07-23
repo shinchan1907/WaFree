@@ -114,5 +114,50 @@ export function accountsRouter(manager: WaManager): Router {
     res.json({ success: true, data: rows });
   });
 
+  /** Profile-picture URL for a chat/contact (cached server-side). */
+  router.get('/:accountId/avatar/:jid', requireAccountAccess, async (req, res) => {
+    const accountId = Number(req.params.accountId);
+    const jid = String(req.params.jid);
+    const url = await manager.getAvatarUrl(accountId, jid).catch(() => null);
+    res.json({ success: true, data: { url } });
+  });
+
+  /** Full contact card for the info panel: name, phone (lid-resolved), avatar. */
+  router.get('/:accountId/contact/:jid', requireAccountAccess, async (req, res) => {
+    const accountId = Number(req.params.accountId);
+    const jid = String(req.params.jid);
+
+    let phone: string | null = null;
+    if (jid.endsWith('@s.whatsapp.net')) {
+      phone = jid.split('@')[0];
+    } else if (jid.endsWith('@lid')) {
+      const row = db.prepare(`SELECT pn FROM lid_map WHERE account_id = ? AND lid = ?`).get(accountId, jid) as
+        | { pn: string }
+        | undefined;
+      if (row) phone = row.pn.split('@')[0];
+    }
+
+    const chat = db
+      .prepare(`SELECT name, status, assigned_user_id FROM chats WHERE account_id = ? AND jid = ?`)
+      .get(accountId, jid) as { name: string | null; status: string; assigned_user_id: number | null } | undefined;
+    const contact = db.prepare(`SELECT name FROM contacts WHERE account_id = ? AND jid = ?`).get(accountId, jid) as
+      | { name: string | null }
+      | undefined;
+    const avatarUrl = await manager.getAvatarUrl(accountId, jid).catch(() => null);
+
+    res.json({
+      success: true,
+      data: {
+        jid,
+        phone,
+        name: chat?.name || contact?.name || null,
+        is_group: jid.endsWith('@g.us'),
+        is_lid: jid.endsWith('@lid'),
+        status: chat?.status ?? null,
+        avatar_url: avatarUrl
+      }
+    });
+  });
+
   return router;
 }

@@ -2,8 +2,10 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { getSocket } from '../socket';
 import type { Account, Agent, Chat, ChatStatus, Message, QuickReply, Tag } from '../types';
-import { avatarColor, chatDisplayName, formatDaySeparator, formatTime, initials, jidSubtitle } from '../lib/format';
+import { avatarColor, chatDisplayName, formatDaySeparator, formatTime, jidSubtitle } from '../lib/format';
 import Composer from './Composer';
+import Avatar from './Avatar';
+import ContactPanel from './ContactPanel';
 
 interface Props {
   account: Account;
@@ -36,6 +38,7 @@ export default function ChatWindow({ account, chat, tags, quickReplies }: Props)
   const [agents, setAgents] = useState<Agent[]>([]);
   const [sendError, setSendError] = useState('');
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 
@@ -158,13 +161,16 @@ export default function ChatWindow({ account, chat, tags, quickReplies }: Props)
   let lastDay = '';
 
   return (
+    <div className="chat-area">
     <section className="chat-window">
       <header className="chat-header">
-        <div className="avatar" style={{ background: avatarColor(chat.jid) }}>
-          {initials(name)}
-        </div>
+        <button className="chat-header-clickable" onClick={() => setInfoOpen(true)} title="View contact info">
+          <Avatar accountId={account.id} jid={chat.jid} name={name} size={40} />
+        </button>
         <div className="chat-header-info">
-          <div className="chat-header-name">{name}</div>
+          <button className="chat-header-name chat-header-clickable" onClick={() => setInfoOpen(true)} title="View contact info">
+            {name}
+          </button>
           <div className="chat-header-sub">
             {jidSubtitle(chat.jid)}
             <span className="account-badge" style={{ borderColor: account.color, color: account.color }}>
@@ -266,6 +272,8 @@ export default function ChatWindow({ account, chat, tags, quickReplies }: Props)
 
                   {caption ? <span className="bubble-text">{caption}</span> : !imageUrl && <span className="bubble-text">{m.text ?? ''}</span>}
 
+                  {/* Invisible spacer reserves room for the time+ticks on the last text line. */}
+                  <span className={`bubble-spacer ${fromMe ? 'with-ticks' : ''}`} aria-hidden="true" />
                   <span className="bubble-time">
                     {formatTime(m.timestamp)}
                     {fromMe && (
@@ -307,5 +315,7 @@ export default function ChatWindow({ account, chat, tags, quickReplies }: Props)
         disabledHint={account.status !== 'connected' ? `WhatsApp "${account.label}" is ${account.status}` : ''}
       />
     </section>
+    {infoOpen && <ContactPanel account={account} chat={chat} tags={tags} onClose={() => setInfoOpen(false)} />}
+    </div>
   );
 }

@@ -73,6 +73,24 @@ export class WaManager {
     this.emitAccount(accountId, 'account:status', { accountId, status, phone: phone ?? undefined });
   }
 
+  /** Profile-picture URL cache: WhatsApp CDN urls are valid for a while, so cache lookups. */
+  private avatarCache = new Map<string, { url: string | null; fetchedAt: number }>();
+  private static readonly AVATAR_TTL_MS = 6 * 60 * 60 * 1000;
+  private static readonly AVATAR_NEGATIVE_TTL_MS = 30 * 60 * 1000;
+
+  async getAvatarUrl(accountId: number, jid: string): Promise<string | null> {
+    const key = `${accountId}:${jid}`;
+    const cached = this.avatarCache.get(key);
+    const ttl = cached?.url ? WaManager.AVATAR_TTL_MS : WaManager.AVATAR_NEGATIVE_TTL_MS;
+    if (cached && Date.now() - cached.fetchedAt < ttl) return cached.url;
+
+    const session = this.sessions.get(accountId);
+    if (!session?.sock || session.status !== 'connected') return cached?.url ?? null;
+    const url = await session.sock.profilePictureUrl(jid, 'image').catch(() => null);
+    this.avatarCache.set(key, { url: url ?? null, fetchedAt: Date.now() });
+    return url ?? null;
+  }
+
   getStatus(accountId: number): AccountStatus {
     return this.sessions.get(accountId)?.status ?? 'disconnected';
   }

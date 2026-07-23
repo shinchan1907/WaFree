@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { getSocket } from '../socket';
 import { useAuth } from '../AuthContext';
-import type { Account, Chat, ChatStatus, QuickReply, Tag } from '../types';
-import { initials } from '../lib/format';
+import type { Account, Chat, ChatStatus, Message, QuickReply, Tag } from '../types';
+import { chatDisplayName, initials } from '../lib/format';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ThemeToggle from '../components/ThemeToggle';
+import { enableNotifications, disableNotifications, isNotifyEnabled, showMessageNotification } from '../notifications';
 
 export type TabFilter = 'all' | ChatStatus;
 
@@ -20,6 +21,11 @@ export default function ChatApp() {
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loadingChats, setLoadingChats] = useState(false);
+  const [notifyOn, setNotifyOn] = useState(isNotifyEnabled);
+
+  // Refs so the socket listener always sees the currently open chat.
+  const activeRef = useRef<{ accountId: number | null; jid: string | null }>({ accountId: null, jid: null });
+  const chatsRef = useRef<Chat[]>([]);
 
   const loadAccounts = useCallback(async () => {
     const res = await api.get<Account[]>('/api/accounts');
@@ -55,6 +61,60 @@ export default function ChatApp() {
       .catch(console.error)
       .finally(() => setLoadingChats(false));
   }, [activeAccountId]);
+
+  useEffect(() => {
+    activeRef.current = { accountId: activeAccountId, jid: activeJid };
+  }, [activeAccountId, activeJid]);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
+
+  // Desktop notifications for incoming messages (any accessible account).
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const onNewMessage = (payload: { accountId: number; chatJid: string; message: Message }) => {
+      if (payload.message.from_me) return;
+      const { accountId, jid } = activeRef.current;
+      const isChatOpenAndVisible =
+        !document.hidden && payload.accountId === accountId && payload.chatJid === jid;
+      if (isChatOpenAndVisible) return;
+
+      const knownChat =
+        payload.accountId === accountId ? chatsRef.current.find((c) => c.jid === payload.chatJid) : undefined;
+      const title = chatDisplayName(knownChat?.name ?? payload.message.sender_name ?? null, payload.chatJid);
+      showMessageNotification(title, payload.message.text ?? 'New message', () => {
+        if (payload.accountId !== activeRef.current.accountId) setActiveAccountId(payload.accountId);
+        setActiveJid(payload.chatJid);
+      });
+    };
+
+    socket.on('message:new', onNewMessage);
+    return () => {
+      socket.off('message:new', onNewMessage);
+    };
+  }, []);
+
+  // Tab title shows total unread count of the active account.
+  useEffect(() => {
+    const totalUnread = chats.reduce((sum, c) => sum + c.unread_count, 0);
+    document.title = totalUnread > 0 ? `(${totalUnread}) WaFree` : 'WaFree — Multi-WhatsApp Dashboard';
+  }, [chats]);
+
+  const toggleNotifications = async () => {
+    if (notifyOn) {
+      disableNotifications();
+      setNotifyOn(false);
+      return;
+    }
+    const granted = await enableNotifications();
+    setNotifyOn(granted);
+    if (!granted) {
+      window.alert('Notifications are blocked by the browser. Allow them for this site in browser settings.');
+    }
+  };
 
   // Realtime: chat rows + account status
   useEffect(() => {
@@ -133,6 +193,25 @@ export default function ChatApp() {
           {accounts.length === 0 && <div className="rail-empty">—</div>}
         </div>
         <div className="rail-bottom">
+          <button
+            className={`rail-icon ${notifyOn ? 'rail-icon-active' : ''}`}
+            title={notifyOn ? 'Notifications on — click to disable' : 'Enable chat notifications'}
+            onClick={() => void toggleNotifications()}
+          >
+            {notifyOn ? (
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M12 22a2.5 2.5 0 0 0 2.5-2.5h-5A2.5 2.5 0 0 0 12 22zm7-5.5v-6a7 7 0 0 0-5-6.7V3a2 2 0 1 0-4 0v.8a7 7 0 0 0-5 6.7v6l-2 2v1h18v-1l-2-2z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                <path d="M18.63 13A17.89 17.89 0 0 1 18 8" />
+                <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14" />
+                <path d="M18 8a6 6 0 0 0-9.33-5" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            )}
+          </button>
           <ThemeToggle />
           {user?.role === 'admin' && (
             <Link to="/admin" className="rail-icon" title="Admin panel">
